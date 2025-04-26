@@ -3,22 +3,25 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
 app.use(cors());
 app.use(bodyParser.json());
 
-// Simple in-memory user storage
-const users = [];
+let users = [];
 
 app.post('/signup', (req, res) => {
   const { username, password } = req.body;
   
-  const userExists = users.find(u => u.username === username);
+  const userExists = users.find(user => user.username === username);
   if (userExists) {
     return res.status(400).json({ message: 'User already exists' });
   }
-
+  
   users.push({ username, password });
-  return res.json({ message: 'Signup successful!' });
+  console.log(`✅ New signup - Username: ${username}, Password: ${password}`);
+  
+  res.json({ message: 'Signup successful' });
 });
 
 app.post('/login', (req, res) => {
@@ -26,18 +29,19 @@ app.post('/login', (req, res) => {
   
   console.log(`🔑 Login attempt - Username: ${username}, Password: ${password}`);
   
-  // your normal login logic here
-});
-
+  const user = users.find(user => user.username === username && user.password === password);
   
-  const user = users.find(u => u.username === username && u.password === password);
   if (user) {
-    return res.json({ message: 'Login successful!' });
+    res.json({ message: 'Login successful' });
   } else {
-    return res.status(400).json({ message: 'Invalid credentials' });
+    res.status(401).json({ message: 'Invalid credentials' });
   }
 });
 
-app.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
+app.get('/', (req, res) => {
+  res.send('Server is running!');
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
