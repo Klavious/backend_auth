@@ -24,6 +24,12 @@ app.post('/signup', (req, res) => {
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
   
+  console.log(`🔑 Login attempt - Username: ${username}, Password: ${password}`);
+  
+  // your normal login logic here
+});
+
+  
   const user = users.find(u => u.username === username && u.password === password);
   if (user) {
     return res.json({ message: 'Login successful!' });
