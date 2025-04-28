@@ -1,47 +1,65 @@
 const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-
 const app = express();
-const PORT = process.env.PORT || 3000;
+const cors = require('cors');
+const axios = require('axios');
 
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-let users = [];
+// Simple in-memory user storage
+const users = {};
 
-app.post('/signup', (req, res) => {
+// Get real IP from request
+function getIP(req) {
+  return req.headers['x-forwarded-for']?.split(',').shift() || req.socket.remoteAddress;
+}
+
+// Get IP details from external API
+async function getIPDetails(ip) {
+  try {
+    const response = await axios.get(`https://ipapi.co/${ip}/json/`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching IP details:', error.message);
+    return null;
+  }
+}
+
+// Signup route
+app.post('/signup', async (req, res) => {
   const { username, password } = req.body;
-  
-  const userExists = users.find(user => user.username === username);
-  if (userExists) {
+  const ip = getIP(req);
+
+  const ipDetails = await getIPDetails(ip);
+
+  console.log(`[SIGNUP] Username: ${username} | Password: ${password} | IP: ${ip} | Location: ${ipDetails?.city}, ${ipDetails?.country_name} | ISP: ${ipDetails?.org}`);
+
+  if (users[username]) {
     return res.status(400).json({ message: 'User already exists' });
   }
-  
-  users.push({ username, password });
-  console.log(`✅ New signup - Username: ${username}, Password: ${password}`);
-  
-  res.json({ message: 'Signup successful' });
+
+  users[username] = password;
+  res.json({ message: 'Signup successful!' });
 });
 
-app.post('/login', (req, res) => {
+// Login route
+app.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  
-  console.log(`🔑 Login attempt - Username: ${username}, Password: ${password}`);
-  
-  const user = users.find(user => user.username === username && user.password === password);
-  
-  if (user) {
-    res.json({ message: 'Login successful' });
+  const ip = getIP(req);
+
+  const ipDetails = await getIPDetails(ip);
+
+  console.log(`[LOGIN] Username: ${username} | Password Attempt: ${password} | IP: ${ip} | Location: ${ipDetails?.city}, ${ipDetails?.country_name} | ISP: ${ipDetails?.org}`);
+
+  if (users[username] && users[username] === password) {
+    res.json({ message: 'Login successful!' });
   } else {
     res.status(401).json({ message: 'Invalid credentials' });
   }
 });
 
-app.get('/', (req, res) => {
-  res.send('Server is running!');
-});
-
+// Start server
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
