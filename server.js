@@ -2,11 +2,12 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const axios = require('axios');
+const UAParser = require('ua-parser-js');  // NEW
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// In-memory storage
+// In-memory database
 const users = {};
 
 app.use(cors());
@@ -23,11 +24,22 @@ async function getIPInfo(ip) {
   }
 }
 
+// Helper to parse User Agent nicely
+function parseUserAgent(uaString) {
+  const parser = new UAParser(uaString);
+  const browser = parser.getBrowser();
+  const os = parser.getOS();
+  return `${browser.name} ${browser.version} on ${os.name} ${os.version}`;
+}
+
 app.post('/signup', async (req, res) => {
   const { username, password, userAgent } = req.body;
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+  const rawIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const ip = rawIP.split(',')[0].trim();
 
   const ipInfo = await getIPInfo(ip);
+  const browserInfo = parseUserAgent(userAgent || '');
 
   console.log(`\n📥 New Signup`);
   console.log(`Username: ${username}`);
@@ -36,19 +48,21 @@ app.post('/signup', async (req, res) => {
   if (ipInfo) {
     console.log(`City: ${ipInfo.city}, Country: ${ipInfo.country}, ISP: ${ipInfo.org}`);
   }
-  console.log(`Browser Info: ${userAgent}`);
+  console.log(`Browser: ${browserInfo}`);
   console.log(`Signup Time: ${new Date().toISOString()}`);
 
   users[username] = { password };
-
   res.json({ message: 'Signup successful. Please login.' });
 });
 
 app.post('/login', async (req, res) => {
   const { username, password, userAgent } = req.body;
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+  const rawIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const ip = rawIP.split(',')[0].trim();
 
   const ipInfo = await getIPInfo(ip);
+  const browserInfo = parseUserAgent(userAgent || '');
 
   console.log(`\n🔑 Login Attempt`);
   console.log(`Username: ${username}`);
@@ -57,7 +71,7 @@ app.post('/login', async (req, res) => {
   if (ipInfo) {
     console.log(`City: ${ipInfo.city}, Country: ${ipInfo.country}, ISP: ${ipInfo.org}`);
   }
-  console.log(`Browser Info: ${userAgent}`);
+  console.log(`Browser: ${browserInfo}`);
   console.log(`Login Time: ${new Date().toISOString()}`);
 
   if (users[username] && users[username].password === password) {
