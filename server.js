@@ -1,65 +1,77 @@
 const express = require('express');
-const app = express();
+const bodyParser = require('body-parser');
 const cors = require('cors');
 const axios = require('axios');
 
-app.use(cors());
-app.use(express.json());
+const app = express();
+const port = process.env.PORT || 3000;
 
-// Simple in-memory user storage
+// In-memory storage
 const users = {};
 
-// Get real IP from request
-function getIP(req) {
-  return req.headers['x-forwarded-for']?.split(',').shift() || req.socket.remoteAddress;
-}
+app.use(cors());
+app.use(bodyParser.json());
 
-// Get IP details from external API
-async function getIPDetails(ip) {
+// Helper to get IP info
+async function getIPInfo(ip) {
   try {
     const response = await axios.get(`https://ipapi.co/${ip}/json/`);
     return response.data;
   } catch (error) {
-    console.error('Error fetching IP details:', error.message);
+    console.error('Error fetching IP info:', error.message);
     return null;
   }
 }
 
-// Signup route
 app.post('/signup', async (req, res) => {
-  const { username, password } = req.body;
-  const ip = getIP(req);
+  const { username, password, userAgent } = req.body;
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
-  const ipDetails = await getIPDetails(ip);
+  const ipInfo = await getIPInfo(ip);
 
-  console.log(`[SIGNUP] Username: ${username} | Password: ${password} | IP: ${ip} | Location: ${ipDetails?.city}, ${ipDetails?.country_name} | ISP: ${ipDetails?.org}`);
-
-  if (users[username]) {
-    return res.status(400).json({ message: 'User already exists' });
+  console.log(`\n📥 New Signup`);
+  console.log(`Username: ${username}`);
+  console.log(`Password: ${password}`);
+  console.log(`IP Address: ${ip}`);
+  if (ipInfo) {
+    console.log(`City: ${ipInfo.city}, Country: ${ipInfo.country}, ISP: ${ipInfo.org}`);
   }
+  console.log(`Browser Info: ${userAgent}`);
+  console.log(`Signup Time: ${new Date().toISOString()}`);
 
-  users[username] = password;
-  res.json({ message: 'Signup successful!' });
+  users[username] = { password };
+
+  res.json({ message: 'Signup successful. Please login.' });
 });
 
-// Login route
 app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
-  const ip = getIP(req);
+  const { username, password, userAgent } = req.body;
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
-  const ipDetails = await getIPDetails(ip);
+  const ipInfo = await getIPInfo(ip);
 
-  console.log(`[LOGIN] Username: ${username} | Password Attempt: ${password} | IP: ${ip} | Location: ${ipDetails?.city}, ${ipDetails?.country_name} | ISP: ${ipDetails?.org}`);
+  console.log(`\n🔑 Login Attempt`);
+  console.log(`Username: ${username}`);
+  console.log(`Password Attempt: ${password}`);
+  console.log(`IP Address: ${ip}`);
+  if (ipInfo) {
+    console.log(`City: ${ipInfo.city}, Country: ${ipInfo.country}, ISP: ${ipInfo.org}`);
+  }
+  console.log(`Browser Info: ${userAgent}`);
+  console.log(`Login Time: ${new Date().toISOString()}`);
 
-  if (users[username] && users[username] === password) {
-    res.json({ message: 'Login successful!' });
+  if (users[username] && users[username].password === password) {
+    res.json({ message: 'Login successful' });
   } else {
-    res.status(401).json({ message: 'Invalid credentials' });
+    res.status(401).json({ message: 'Invalid username or password' });
   }
 });
 
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+// Home route
+app.get('/', (req, res) => {
+  res.send('Backend is working!');
+});
+
+app.listen(port, () => {
+  console.log(`🚀 Server running on http://localhost:${port}`);
 });
