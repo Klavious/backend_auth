@@ -11,21 +11,18 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// ✅ Replace with your MongoDB URI
-const mongoose = require('mongoose');
-
+// ✅ MongoDB URI - ensure this is valid and user has read/write access
 const MONGO_URI = 'mongodb+srv://tarundigavalli:mAvhKUCrLVk5fpxX@cluster0.cotbce2.mongodb.net/auth_db?retryWrites=true&w=majority&appName=Cluster0';
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log('✅ Connected to MongoDB'))
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
-
 // ✅ Define Mongoose User schema
 const userSchema = new mongoose.Schema({
-  username: String,
-  password: String,
-  age: Number
+  username: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  age: { type: Number, required: true }
 });
 const User = mongoose.model('User', userSchema);
 
@@ -43,6 +40,7 @@ app.post('/signup', async (req, res) => {
     console.log(`👤 New User Registered: ${username}, Age: ${age}`);
     res.json({ message: 'Signup successful! Please login.' });
   } catch (err) {
+    console.error('❌ Signup Error:', err);
     res.status(500).json({ message: 'Server error during signup' });
   }
 });
@@ -78,6 +76,7 @@ app.post('/login', async (req, res) => {
 
     res.json({ message: 'Login successful!' });
   } catch (err) {
+    console.error('❌ Login Error:', err);
     res.status(500).json({ message: 'Server error during login' });
   }
 });
@@ -91,5 +90,5 @@ function parseUserAgent(uaString) {
 }
 
 app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+  console.log(`🚀 Server running on http://localhost:${port}`);
 });
